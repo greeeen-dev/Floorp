@@ -98,7 +98,7 @@ export class StatusBarManager {
             break;
         }
       } catch(e) {
-        console.error("[StatusBarManager] Error handling button press:", event);
+        console.error("[StatusBarManager] Error handling button press:", e);
       }
     });
 
