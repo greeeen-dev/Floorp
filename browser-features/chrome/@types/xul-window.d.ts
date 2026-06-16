@@ -66,7 +66,6 @@ interface GBrowser {
   removeTabsProgressListener(
     listener: Pick<nsIWebProgressListener, "onLocationChange">,
   ): void;
-  createBrowser(...args: unknown[]): XULElement;
 }
 
 interface TabContextMenu {
