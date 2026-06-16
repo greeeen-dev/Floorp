@@ -101,6 +101,19 @@ export class SiteSpecificBrowserManager {
     asPwa = true,
     installUserContextId?: number,
   ) {
+    // Normalize: when experiment is disabled, ignore container ID
+    let effectiveUserContextId = installUserContextId;
+    try {
+      const { PwaContainerExperiment } = ChromeUtils.importESModule(
+        "resource://noraneko/modules/pwa/PwaContainerExperiment.sys.mjs",
+      );
+      if (!PwaContainerExperiment.isEnabled()) {
+        effectiveUserContextId = undefined;
+      }
+    } catch {
+      effectiveUserContextId = undefined;
+    }
+
     const isInstalled = await this.checkCurrentPageIsInstalled(browser);
 
     if (isInstalled) {
@@ -112,13 +125,13 @@ export class SiteSpecificBrowserManager {
 
       const ssbObj = await this.getIdByUrl(
         currentTabSsb.start_url,
-        installUserContextId ?? 0,
+        effectiveUserContextId ?? 0,
       );
 
       if (ssbObj && globalThis.gBrowser.selectedBrowser.currentURI) {
         await this.runSsbByUrl(
           globalThis.gBrowser.selectedBrowser.currentURI.spec,
-          installUserContextId,
+          effectiveUserContextId,
         );
       }
     } else {
@@ -130,15 +143,15 @@ export class SiteSpecificBrowserManager {
         return;
       }
 
-      if (installUserContextId && installUserContextId > 0) {
-        manifest.userContextId = installUserContextId;
+      if (effectiveUserContextId && effectiveUserContextId > 0) {
+        manifest.userContextId = effectiveUserContextId;
       }
 
       await this.install(manifest);
 
       // Installing needs some time to finish
       globalThis.setTimeout(() => {
-        this.runSsbByUrl(manifest.start_url, installUserContextId);
+        this.runSsbByUrl(manifest.start_url, effectiveUserContextId);
       }, 3000);
     }
   }
@@ -160,6 +173,35 @@ export class SiteSpecificBrowserManager {
       if (
         startUrl === currentTabSsb.start_url ||
         currentTabSsb.start_url.startsWith(startUrl)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public async checkPageIsInstalledForContainer(
+    browser: Browser,
+    userContextId: number,
+  ): Promise<boolean> {
+    if (!this.checkSiteCanBeInstall(browser.currentURI)) {
+      return false;
+    }
+
+    const currentTabSsb = await this.getCurrentTabSsb(browser);
+    const ssbData = await this.dataManager.getCurrentSsbData();
+
+    if (!currentTabSsb) {
+      return false;
+    }
+
+    for (const key in ssbData) {
+      const { startUrl, userContextId: storedCtxId } =
+        DataManagerClass.parseKey(key);
+      if (
+        (startUrl === currentTabSsb.start_url ||
+          currentTabSsb.start_url.startsWith(startUrl)) &&
+        (storedCtxId ?? 0) === userContextId
       ) {
         return true;
       }
@@ -346,6 +388,17 @@ export class SiteSpecificBrowserManager {
     id: string,
     userContextId: number,
   ): Promise<boolean> {
+    try {
+      const { PwaContainerExperiment } = ChromeUtils.importESModule(
+        "resource://noraneko/modules/pwa/PwaContainerExperiment.sys.mjs",
+      );
+      if (!PwaContainerExperiment.isEnabled()) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+
     const ssbObj = await this.getSsbObj(id);
     if (!ssbObj) {
       return false;
