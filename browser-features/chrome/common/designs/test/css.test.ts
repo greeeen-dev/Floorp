@@ -111,8 +111,8 @@ function testLeptonHasTwoStyleEntries(): void {
     (result.chromeStyles?.length ?? 0) || (result.chromeStylesRaw?.length ?? 0);
   assertEquals(
     count,
-    2,
-    "lepton should have 2 style entries (chrome + content)",
+    3,
+    "lepton should have 3 style entries (chrome + content + navBar background)",
   );
 }
 

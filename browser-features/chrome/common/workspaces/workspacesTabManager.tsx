@@ -349,19 +349,59 @@ export class WorkspacesTabManager {
             .filter((t) => t !== tab);
           if (remainingTabs.length > 0) {
             const newTab = remainingTabs[0];
-            this.setWorkspaceIdToAttribute(newTab, workspaceId);
-            globalThis.gBrowser.selectedTab = newTab;
+
+            // Check if the replacement tab's container matches the workspace's container.
+            // Firefox creates replacement tabs in the default container (userContextId=0),
+            // which is wrong for workspaces that have a specific container configured.
+            const workspace = this.dataManagerCtx.getRawWorkspace(workspaceId);
+            const workspaceUserContextId = workspace?.userContextId ?? 0;
+            const tabActualUserContextId = Number.parseInt(
+              newTab.getAttribute("usercontextid") || "0",
+              10,
+            );
+
+            if (
+              workspaceUserContextId > 0 &&
+              tabActualUserContextId !== workspaceUserContextId
+            ) {
+              // Firefox's replacement tab is in the wrong container. Remove it and
+              // create a proper one in the correct container (#2193).
+              this.suppressTabCloseHandling = true;
+              try {
+                globalThis.gBrowser.removeTab(newTab);
+              } finally {
+                this.suppressTabCloseHandling = false;
+              }
+              this.createTabForWorkspace(workspaceId, true);
+            } else {
+              this.setWorkspaceIdToAttribute(newTab, workspaceId);
+              globalThis.gBrowser.selectedTab = newTab;
+            }
           } else {
             this.createTabForWorkspace(workspaceId, true);
           }
+          this.updateTabsVisibility();
           return;
         }
 
-        // We should close the window manually because we force closeWindowWithLastTab=false.
-        Services.prefs.setBoolPref(WORKSPACE_PENDING_EXIT_PREF_NAME, true);
-        setTimeout(() => {
-          globalThis.close();
-        }, 0);
+        // exitOnLastTabClose is true. Before closing, verify there truly are no
+        // remaining tabs — the 500ms filter above may have excluded recently-created
+        // user tabs, which would cause a premature close (#2152).
+        const remainingTabs = (globalThis.gBrowser.tabs as XULElement[])
+          .filter((t) => t !== tab);
+        if (remainingTabs.length === 0) {
+          Services.prefs.setBoolPref(WORKSPACE_PENDING_EXIT_PREF_NAME, true);
+          setTimeout(() => {
+            globalThis.close();
+          }, 0);
+        } else {
+          // Remaining tabs exist (e.g., user just opened a new tab).
+          // Assign the first one to the workspace instead of closing.
+          const newTab = remainingTabs[0];
+          this.setWorkspaceIdToAttribute(newTab, workspaceId);
+          globalThis.gBrowser.selectedTab = newTab;
+          this.updateTabsVisibility();
+        }
       }
     }
   };
@@ -548,12 +588,24 @@ export class WorkspacesTabManager {
   ) {
     const targetURL = url ??
       Services.prefs.getStringPref("browser.startup.homepage");
+
+    // Look up workspace's container to create the tab in the correct context.
+    // Without this, replacement tabs for container workspaces are created in
+    // the default container, causing proxy/VPN tabs to stop working (#2193).
+    const workspace = this.dataManagerCtx.getRawWorkspace(workspaceId);
+    const userContextId = workspace?.userContextId ?? 0;
+
     const tab = globalThis.gBrowser.addTab(targetURL, {
       skipAnimation: true,
       inBackground: false,
+      userContextId: userContextId > 0 ? userContextId : undefined,
       triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
     });
     this.setWorkspaceIdToAttribute(tab, workspaceId);
+
+    if (userContextId > 0) {
+      tab.setAttribute("usercontextid", String(userContextId));
+    }
 
     if (select) {
       globalThis.gBrowser.selectedTab = tab;
