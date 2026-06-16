@@ -424,7 +424,7 @@
             "staticPanelRequired": "Please select a sidebar tool",
             "invalidWidth": "Width must be at least 100 pixels"
         },
-        "save": "Opslaan",
+        "save": "Save",
         "cancel": "Annuleren"
     },
     "progressiveWebApp": {
@@ -449,14 +449,7 @@
         "uninstallWarning": "Are you sure you want to uninstall \"{{name}}\"?",
         "cancel": "Cancel",
         "rename": "Rename",
-        "uninstall": "Uninstall",
-        "container": "Container",
-        "noContainer": "Geen container",
-        "setContainer": "Container instellen",
-        "containerDescription": "Kies in welke Firefox-container deze app wordt geopend. Containers isoleren cookies en websitedata.",
-        "containerDeleted": "Container verwijderd",
-        "save": "Opslaan",
-        "errorSettingContainer": "Container instellen mislukt"
+        "uninstall": "Uninstall"
     },
     "floorpOS": {
         "title": "Floorp OS",

@@ -449,14 +449,7 @@
         "uninstallWarning": "Are you sure you want to uninstall \"{{name}}\"?",
         "cancel": "Cancel",
         "rename": "Rename",
-        "uninstall": "Uninstall",
-        "container": "Container",
-        "noContainer": "No Container",
-        "setContainer": "Set Container",
-        "containerDescription": "Choose which Firefox Container this app opens in. Containers isolate cookies and site data.",
-        "containerDeleted": "Container deleted",
-        "save": "Save",
-        "errorSettingContainer": "Failed to set container"
+        "uninstall": "Uninstall"
     },
     "floorpOS": {
         "title": "{{productName}} OS",

@@ -392,8 +392,8 @@
         "icon": "Icon",
         "width": "Width",
         "zoomLevel": "Zoom Level",
-        "container": "ตู้คอนเทนเนอร์",
-        "noContainer": "ไม่มีตู้คอนเทนเนอร์",
+        "container": "Container",
+        "noContainer": "No Container",
         "useUserAgent": "Use Mobile User Agent",
         "panelType": "Panel Type",
         "panelList": "Panel List",
@@ -424,7 +424,7 @@
             "staticPanelRequired": "Please select a sidebar tool",
             "invalidWidth": "Width must be at least 100 pixels"
         },
-        "save": "บันทึก",
+        "save": "Save",
         "cancel": "Cancel"
     },
     "progressiveWebApp": {
@@ -449,14 +449,7 @@
         "uninstallWarning": "Are you sure you want to uninstall \"{{name}}\"?",
         "cancel": "Cancel",
         "rename": "Rename",
-        "uninstall": "Uninstall",
-        "container": "ตู้คอนเทนเนอร์",
-        "noContainer": "ไม่มีตู้คอนเทนเนอร์",
-        "setContainer": "ตั้งค่าตู้คอนเทนเนอร์",
-        "containerDescription": "เลือกตู้คอนเทนเนอร์ Firefox ที่แอปนี้จะเปิด ตู้คอนเทนเนอร์จะแยกคุกกี้และข้อมูลเว็บไซต์",
-        "containerDeleted": "ลบตู้คอนเทนเนอร์แล้ว",
-        "save": "บันทึก",
-        "errorSettingContainer": "ตั้งค่าตู้คอนเทนเนอร์ไม่สำเร็จ"
+        "uninstall": "Uninstall"
     },
     "floorpOS": {
         "title": "{{productName}} OS",

@@ -392,8 +392,8 @@
         "icon": "Icon",
         "width": "Width",
         "zoomLevel": "Zoom Level",
-        "container": "Konténer",
-        "noContainer": "Nincs konténer",
+        "container": "Container",
+        "noContainer": "No Container",
         "useUserAgent": "Use Mobile User Agent",
         "panelType": "Panel Type",
         "panelList": "Panel List",
@@ -424,7 +424,7 @@
             "staticPanelRequired": "Please select a sidebar tool",
             "invalidWidth": "Width must be at least 100 pixels"
         },
-        "save": "Mentés",
+        "save": "Save",
         "cancel": "Cancel"
     },
     "progressiveWebApp": {
@@ -449,14 +449,7 @@
         "uninstallWarning": "Are you sure you want to uninstall \"{{name}}\"?",
         "cancel": "Cancel",
         "rename": "Rename",
-        "uninstall": "Uninstall",
-        "container": "Konténer",
-        "noContainer": "Nincs konténer",
-        "setContainer": "Konténer beállítása",
-        "containerDescription": "Válassza ki, melyik Firefox-konténerben nyíljon meg ez az alkalmazás. A konténerek elkülönítik a sütiket és az oldaladatokat.",
-        "containerDeleted": "Konténer törölve",
-        "save": "Mentés",
-        "errorSettingContainer": "Nem sikerült beállítani a konténert"
+        "uninstall": "Uninstall"
     },
     "floorpOS": {
         "title": "{{productName}} OS",
