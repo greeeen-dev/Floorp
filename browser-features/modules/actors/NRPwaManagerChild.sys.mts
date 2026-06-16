@@ -3,31 +3,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-function isAllowedPwaManagerLocation(href: string): boolean {
-  try {
-    const url = new URL(href);
-    if (url.protocol === "chrome:" && url.hostname === "noraneko-settings") {
-      return true;
-    }
-    if (url.protocol === "about:" && url.pathname === "hub") {
-      return true;
-    }
-    return (
-      url.hostname === "localhost" &&
-      url.port === "5183" &&
-      (url.protocol === "http:" || url.protocol === "https:")
-    );
-  } catch {
-    return false;
-  }
-}
-
 export class NRPwaManagerChild extends JSWindowActorChild {
   actorCreated() {
     console.debug("NRPwaManagerChild created!");
     const window = this.contentWindow;
-    if (window && isAllowedPwaManagerLocation(window.location.href)) {
-      console.debug("NRPwaManager allowed page!");
+    if (
+      window?.location.port === "5183" ||
+      window?.location.href.startsWith("chrome://") ||
+      window?.location.href.startsWith("about:")
+    ) {
+      console.debug("NRPwaManager 5183 ! or Chrome Page!");
       Cu.exportFunction(this.NRGetInstalledApps.bind(this), window, {
         defineAs: "NRGetInstalledApps",
       });
@@ -42,8 +27,8 @@ export class NRPwaManagerChild extends JSWindowActorChild {
       Cu.exportFunction(this.NRGetContainers.bind(this), window, {
         defineAs: "NRGetContainers",
       });
-      Cu.exportFunction(this.NRResetSsbContainer.bind(this), window, {
-        defineAs: "NRResetSsbContainer",
+      Cu.exportFunction(this.NRSetSsbContainer.bind(this), window, {
+        defineAs: "NRSetSsbContainer",
         asAsync: true,
       });
     }
@@ -54,46 +39,43 @@ export class NRPwaManagerChild extends JSWindowActorChild {
   ) {
     // deno-lint-ignore no-explicit-any
     const promise = new Promise<Record<string, any>>((resolve, _reject) => {
-      this.pendingGetInstalledAppsResolvers.push(resolve);
+      this.resolveGetInstalledApps = resolve;
     });
     this.sendAsyncMessage("PwaManager:GetInstalledApps");
     promise.then((installedApps) => callback(installedApps));
   }
 
-  NRRenameSsb(id: string, newName: string, key?: string) {
-    this.sendAsyncMessage("PwaManager:RenameSsb", { id, key, newName });
+  NRRenameSsb(id: string, newName: string) {
+    this.sendAsyncMessage("PwaManager:RenameSsb", { id, newName });
   }
 
-  NRUninstallSsb(id: string, key?: string) {
-    this.sendAsyncMessage("PwaManager:UninstallSsb", { id, key });
+  NRUninstallSsb(id: string) {
+    this.sendAsyncMessage("PwaManager:UninstallSsb", { id });
   }
 
-  NRGetContainers(
-    callback: (containersJson: string) => void = () => {},
-  ) {
+  NRGetContainers(callback: (containersJson: string) => void = () => {}) {
     const promise = new Promise<string>((resolve, _reject) => {
-      this.pendingGetContainersResolvers.push(resolve);
+      this.resolveGetContainers = resolve;
     });
     this.sendAsyncMessage("PwaManager:GetContainers");
     promise.then((containersJson) => callback(containersJson));
   }
 
-  NRResetSsbContainer(id: string, key?: string) {
-    this.sendAsyncMessage("PwaManager:ResetContainer", { id, key });
+  NRSetSsbContainer(id: string, userContextId: number) {
+    this.sendAsyncMessage("PwaManager:SetContainer", { id, userContextId });
   }
 
-  pendingGetInstalledAppsResolvers:
-    // deno-lint-ignore no-explicit-any
-    Array<(installedApps: Record<string, any>) => void> = [];
+  resolveGetInstalledApps: // deno-lint-ignore no-explicit-any
+    ((installedApps: Record<string, any>) => void) | null = null;
   resolveRenameSsb: ((id: string, newName: string) => void) | null = null;
   resolveUninstallSsb: ((id: string) => void) | null = null;
-  pendingGetContainersResolvers: Array<(containersJson: string) => void> = [];
+  resolveGetContainers: ((containersJson: string) => void) | null = null;
   // deno-lint-ignore require-await
   async receiveMessage(message: ReceiveMessageArgument) {
     switch (message.name) {
       case "PwaManager:GetInstalledApps": {
-        const resolver = this.pendingGetInstalledAppsResolvers.shift();
-        resolver?.(message.data);
+        this.resolveGetInstalledApps?.(message.data);
+        this.resolveGetInstalledApps = null;
         break;
       }
       case "PwaManager:RenameSsb": {
@@ -110,8 +92,8 @@ export class NRPwaManagerChild extends JSWindowActorChild {
         break;
       }
       case "PwaManager:GetContainers": {
-        const resolver = this.pendingGetContainersResolvers.shift();
-        resolver?.(message.data);
+        this.resolveGetContainers?.(message.data);
+        this.resolveGetContainers = null;
         break;
       }
     }

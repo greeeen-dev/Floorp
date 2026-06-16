@@ -56,14 +56,10 @@ export function getInstalledApps(): Promise<TProgressiveWebAppObject> {
   });
 }
 
-export function renamePwaApp(
-  id: string,
-  newName: string,
-  key?: string,
-): Promise<void> {
+export function renamePwaApp(id: string, newName: string): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      globalThis.NRRenameSsb(id, newName, key);
+      globalThis.NRRenameSsb(id, newName);
       resolve();
     } catch (e) {
       console.error("Failed to rename PWA:", e);
@@ -72,10 +68,10 @@ export function renamePwaApp(
   });
 }
 
-export function uninstallPwaApp(id: string, key?: string): Promise<void> {
+export function uninstallPwaApp(id: string): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      globalThis.NRUninstallSsb(id, key);
+      globalThis.NRUninstallSsb(id);
       resolve();
     } catch (e) {
       console.error("Failed to uninstall PWA:", e);
@@ -115,13 +111,16 @@ export function getContainers(): Promise<Container[]> {
   });
 }
 
-export function resetSsbContainer(id: string, key?: string): Promise<void> {
+export function setSsbContainer(
+  id: string,
+  userContextId: number,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      globalThis.NRResetSsbContainer(id, key);
+      globalThis.NRSetSsbContainer(id, userContextId);
       resolve();
     } catch (e) {
-      console.error("Failed to reset PWA container:", e);
+      console.error("Failed to set PWA container:", e);
       reject(e);
     }
   });

@@ -22,9 +22,26 @@ export const isMainBrowser = env.get("MOZ_BROWSER_TOOLBOX_PORT") === "";
 export let isFirstRun = false;
 export let isUpdated = false;
 
+/**
+ * Get nsIComponentRegistrar from Components.manager.
+ * Components.manager implements nsIComponentRegistrar at runtime,
+ * but TypeScript definitions don't reflect this directly.
+ */
+function getComponentRegistrar(): nsIComponentRegistrar | null {
+  try {
+    const cm = Components.manager;
+    if (cm === undefined || cm === null) {
+      return null;
+    }
+    return cm as unknown as nsIComponentRegistrar;
+  } catch (e) {
+    console.error("[NoranekoStartup] Failed to get nsIComponentRegistrar:", e);
+    return null;
+  }
+}
+
 const executedFunctions = new Set<string>();
-const RELEASE_NOTES_URL =
-  `https://blog.floorp.app/release/${NoranekoConstants.version2}`;
+const RELEASE_NOTES_URL = `https://blog.floorp.app/release/${NoranekoConstants.version2}`;
 
 export function executeOnce(id: string, callback: () => void): boolean {
   if (executedFunctions.has(id)) {
@@ -379,25 +396,9 @@ async function registerCustomAboutPages(): Promise<void> {
       },
     };
 
-    let registrar: nsIComponentRegistrar | null = null;
-    const cm = Components.manager;
-    if (cm !== undefined && cm !== null) {
-      registrar = cm as unknown as nsIComponentRegistrar;
-      // Some environments require explicit QI; do it when available.
-      try {
-        const maybeQI = (
-          cm as unknown as { QueryInterface?: (iid: nsIID) => unknown }
-        ).QueryInterface;
-        if (typeof maybeQI === "function") {
-          // @ts-expect-error: Gecko Components.manager supports QueryInterface at runtime
-          registrar = cm.QueryInterface(Ci.nsIComponentRegistrar);
-        }
-      } catch (e) {
-        console.error("Failed to get nsIComponentRegistrar:", e);
-      }
-    }
+    const registrar = getComponentRegistrar();
     if (!registrar) {
-      console.error("Failed to get nsIComponentRegistrar");
+      console.error("[NoranekoStartup] Failed to get nsIComponentRegistrar");
       continue;
     }
     registrar.registerFactory(
@@ -427,7 +428,11 @@ function registerSsbCommandLineHandler(): void {
       },
     };
 
-    const registrar = Components.manager as unknown as nsIComponentRegistrar;
+    const registrar = getComponentRegistrar();
+    if (!registrar) {
+      console.error("[NoranekoStartup] Failed to get nsIComponentRegistrar for SSB handler");
+      return;
+    }
     registrar.registerFactory(
       Services.uuid.generateUUID(),
       "Floorp SSB command line handler",

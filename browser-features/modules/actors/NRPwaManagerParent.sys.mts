@@ -3,48 +3,20 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { resolveContainerColor } = ChromeUtils.importESModule(
-  "resource://noraneko/modules/pwa/containerDisplay.sys.mjs",
-);
-const { DataStoreProvider } = ChromeUtils.importESModule(
-  "resource://noraneko/modules/pwa/DataStore.sys.mjs",
-);
-
-type WindowGlobalWithDocumentURI = {
-  documentURI?: {
-    spec?: string;
-  };
+/** Firefox container color name → hex mapping (from toolkit/components/usercontext/content/userContext.css) */
+const CONTAINER_COLORS: Record<string, string> = {
+  blue: "#37adff",
+  turquoise: "#00c79a",
+  green: "#51cd00",
+  yellow: "#ffcb00",
+  orange: "#ff9f00",
+  red: "#ff613d",
+  pink: "#ff4bda",
+  purple: "#af51f5",
 };
-
-function isAllowedPwaManagerSource(href: string): boolean {
-  try {
-    const url = new URL(href);
-    if (url.protocol === "chrome:" && url.hostname === "noraneko-settings") {
-      return true;
-    }
-    if (url.protocol === "about:" && url.pathname === "hub") {
-      return true;
-    }
-    return (
-      url.hostname === "localhost" &&
-      url.port === "5183" &&
-      (url.protocol === "http:" || url.protocol === "https:")
-    );
-  } catch {
-    return false;
-  }
-}
 
 export class NRPwaManagerParent extends JSWindowActorParent {
   async receiveMessage(message: ReceiveMessageArgument) {
-    if (!this.isAllowedMessageSource()) {
-      console.warn(
-        `[NRPwaManagerParent] Rejected ${message.name} from unauthorized source`,
-      );
-      this.replyWithEmptyResult(message.name);
-      return;
-    }
-
     switch (message.name) {
       case "PwaManager:GetInstalledApps": {
         this.sendAsyncMessage(
@@ -58,7 +30,6 @@ export class NRPwaManagerParent extends JSWindowActorParent {
           {
             wrappedJSObject: {
               id: message.data.id,
-              key: message.data.key,
               newName: message.data.newName,
             },
           },
@@ -68,7 +39,7 @@ export class NRPwaManagerParent extends JSWindowActorParent {
       }
       case "PwaManager:UninstallSsb": {
         Services.obs.notifyObservers(
-          { wrappedJSObject: { id: message.data.id, key: message.data.key } },
+          { wrappedJSObject: { id: message.data.id } },
           "nora-ssb-uninstall",
         );
         break;
@@ -80,19 +51,17 @@ export class NRPwaManagerParent extends JSWindowActorParent {
           );
           const identities = ContextualIdentityService.getPublicIdentities();
           const containers = identities.map(
-            (
-              c: {
-                userContextId: number;
-                l10nId?: string;
-                name: string;
-                color: string;
-              },
-            ) => ({
+            (c: {
+              userContextId: number;
+              l10nId?: string;
+              name: string;
+              color: string;
+            }) => ({
               userContextId: c.userContextId,
               name: c.l10nId
                 ? ContextualIdentityService.getUserContextLabel(c.userContextId)
                 : c.name,
-              color: resolveContainerColor(c.color),
+              color: CONTAINER_COLORS[c.color] ?? c.color,
             }),
           );
           this.sendAsyncMessage(
@@ -105,40 +74,91 @@ export class NRPwaManagerParent extends JSWindowActorParent {
         }
         break;
       }
-      case "PwaManager:ResetContainer": {
-        Services.obs.notifyObservers(
-          { wrappedJSObject: { id: message.data.id, key: message.data.key } },
-          "nora-ssb-reset-container",
+      case "PwaManager:SetContainer": {
+        await this.setContainerForSsb(
+          String(message.data.id),
+          Number(message.data.userContextId),
         );
         break;
       }
     }
   }
 
-  private get sourceSpec(): string {
-    const currentWindowGlobal = this.browsingContext
-      ?.currentWindowGlobal as WindowGlobalWithDocumentURI | null;
-    return currentWindowGlobal?.documentURI?.spec ?? "";
+  private get installedAppsStoreFile() {
+    return PathUtils.join(PathUtils.profileDir, "ssb", "ssb.json");
   }
 
-  private isAllowedMessageSource(): boolean {
-    return isAllowedPwaManagerSource(this.sourceSpec);
+  private buildKey(startUrl: string, userContextId: number = 0): string {
+    return `${startUrl}:${userContextId}`;
   }
 
-  private replyWithEmptyResult(messageName: string) {
-    switch (messageName) {
-      case "PwaManager:GetInstalledApps":
-        this.sendAsyncMessage("PwaManager:GetInstalledApps", "{}");
-        break;
-      case "PwaManager:GetContainers":
-        this.sendAsyncMessage("PwaManager:GetContainers", "[]");
-        break;
+  private async readSsbData(): Promise<Record<string, unknown>> {
+    const fileExists = await IOUtils.exists(this.installedAppsStoreFile);
+    if (!fileExists) {
+      return {};
+    }
+    return (await IOUtils.readJSON(this.installedAppsStoreFile)) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  private async writeSsbData(data: Record<string, unknown>): Promise<void> {
+    await IOUtils.writeJSON(this.installedAppsStoreFile, data);
+  }
+
+  private async setContainerForSsb(
+    id: string,
+    userContextId: number,
+  ): Promise<void> {
+    try {
+      const ssbData = await this.readSsbData();
+      // Find the app by id
+      let foundKey: string | null = null;
+      let foundManifest: Record<string, unknown> | null = null;
+      for (const key in ssbData) {
+        const entry = ssbData[key] as Record<string, unknown>;
+        if (entry.id === id) {
+          foundKey = key;
+          foundManifest = entry;
+          break;
+        }
+      }
+
+      if (!foundKey || !foundManifest) {
+        console.warn(
+          "[NRPwaManagerParent] setContainerForSsb: app not found for id:",
+          id,
+        );
+        return;
+      }
+
+      const startUrl = foundManifest.start_url as string;
+
+      // Remove old key
+      delete ssbData[foundKey];
+
+      // Update manifest
+      foundManifest.userContextId =
+        userContextId > 0 ? userContextId : undefined;
+
+      // Save with new key
+      const newKey = this.buildKey(startUrl, userContextId);
+      ssbData[newKey] = foundManifest;
+
+      await this.writeSsbData(ssbData);
+    } catch (e) {
+      console.error("[NRPwaManagerParent] setContainerForSsb error:", e);
     }
   }
 
   private async getInstalledApps() {
-    const installedApps = await DataStoreProvider.getDataManager()
-      .getCurrentSsbData();
+    const fileExists = await IOUtils.exists(this.installedAppsStoreFile);
+    if (!fileExists) {
+      IOUtils.writeJSON(this.installedAppsStoreFile, {});
+      return {};
+    }
+    const installedApps = await IOUtils.readJSON(this.installedAppsStoreFile);
     return JSON.stringify(installedApps);
   }
 }
