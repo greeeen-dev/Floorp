@@ -8,7 +8,7 @@ import type { JSX } from "solid-js";
 import { createRootHMR, render } from "@nora/solid-xul";
 import type { Browser, Manifest } from "./type";
 import type { PwaService } from "./pwaService";
-import { getContainerLabel, getUserContextIdForBrowser } from "./containerUtils.ts";
+import { getContainerLabel, getUserContextIdForBrowser, isContainerExperimentEnabled } from "./containerUtils.ts";
 import { SsbContainerSelect } from "./SsbContainerSelect.tsx";
 import i18next from "i18next";
 import { addI18nObserver } from "#i18n/config-browser-chrome.ts";
@@ -139,6 +139,9 @@ export class SsbPanelView {
   }
 
   private static formatAppLabel(app: Manifest): string {
+    if (!isContainerExperimentEnabled()) {
+      return app.name;
+    }
     const containerLabel = getContainerLabel(app.userContextId ?? 0);
     if (!containerLabel) {
       return app.name;
@@ -204,12 +207,14 @@ export class SsbPanelView {
         >
           <xul:vbox id="ssb-subview-body" class="panel-subview-body">
             <xul:vbox id="ssb-install-section" class="ssb-menu-install-section">
-              <SsbContainerSelect
-                selectedId={selectedContainerId}
-                onSelect={SsbPanelView.onContainerSelect}
-                labelKey="ssb.menu.container"
-                menuPopupLevel="top"
-              />
+              {isContainerExperimentEnabled() && (
+                <SsbContainerSelect
+                  selectedId={selectedContainerId}
+                  onSelect={SsbPanelView.onContainerSelect}
+                  labelKey="ssb.menu.container"
+                  menuPopupLevel="top"
+                />
+              )}
               <xul:toolbarbutton
                 id="appMenu-install-or-open-ssb-current-page-button"
                 class="subviewbutton"

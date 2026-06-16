@@ -3,6 +3,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+const { PwaContainerExperiment } = ChromeUtils.importESModule(
+  "resource://noraneko/modules/pwa/PwaContainerExperiment.sys.mjs",
+);
+
 /** Firefox container color name → hex mapping (from toolkit/components/usercontext/content/userContext.css) */
 const CONTAINER_COLORS: Record<string, string> = {
   blue: "#37adff",
@@ -45,6 +49,10 @@ export class NRPwaManagerParent extends JSWindowActorParent {
         break;
       }
       case "PwaManager:GetContainers": {
+        if (!PwaContainerExperiment.isEnabled()) {
+          this.sendAsyncMessage("PwaManager:GetContainers", "[]");
+          break;
+        }
         try {
           const { ContextualIdentityService } = ChromeUtils.importESModule(
             "resource://gre/modules/ContextualIdentityService.sys.mjs",
@@ -75,6 +83,9 @@ export class NRPwaManagerParent extends JSWindowActorParent {
         break;
       }
       case "PwaManager:SetContainer": {
+        if (!PwaContainerExperiment.isEnabled()) {
+          break;
+        }
         await this.setContainerForSsb(
           String(message.data.id),
           Number(message.data.userContextId),

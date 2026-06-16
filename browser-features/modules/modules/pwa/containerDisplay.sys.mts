@@ -9,6 +9,7 @@ import {
   mapColorToCSSVariable,
   resolveContainerDisplayColorFromWindow,
 } from "#libs/pwa/containerColorMap.ts";
+import { PwaContainerExperiment } from "./PwaContainerExperiment.sys.mts";
 
 type ContainerIdentity = {
   userContextId: number;
@@ -26,6 +27,9 @@ function getContextualIdentityService() {
  * Returns the CSS color suffix for a container (e.g. "blue", "green").
  */
 export function getContainerColorName(userContextId: number): string | null {
+  if (!PwaContainerExperiment.isEnabled()) {
+    return null;
+  }
   if (userContextId <= 0) {
     return null;
   }
@@ -49,6 +53,9 @@ export function getContainerColorName(userContextId: number): string | null {
  * Returns the localized container label, or null when not in a container.
  */
 export function getContainerLabel(userContextId: number): string | null {
+  if (!PwaContainerExperiment.isEnabled()) {
+    return null;
+  }
   if (userContextId <= 0) {
     return null;
   }
@@ -66,6 +73,9 @@ export function getContainerLabel(userContextId: number): string | null {
  * Display name for OS shortcuts. Appends container label when assigned.
  */
 export function getSsbDisplayName(ssb: Manifest): string {
+  if (!PwaContainerExperiment.isEnabled()) {
+    return ssb.name;
+  }
   const userContextId = ssb.userContextId ?? 0;
   if (userContextId <= 0) {
     return ssb.name;

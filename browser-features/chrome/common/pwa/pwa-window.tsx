@@ -13,6 +13,7 @@ import {
   getSsbWindowTitle,
   SsbWindowContainerIndicator,
 } from "./SsbWindowContainerIndicator.tsx";
+import { isContainerExperimentEnabled } from "./containerUtils.ts";
 
 export class PwaWindowSupport {
   private ssbId = createSignal<string | null>(null);
@@ -91,7 +92,9 @@ export class PwaWindowSupport {
     await this.renderStyles();
     await this.setupPageActions();
     await this.setupTabs();
-    await this.setupContainerVisual();
+    if (isContainerExperimentEnabled()) {
+      await this.setupContainerVisual();
+    }
     this.disableUrlbarInteractions();
   }
 
@@ -119,9 +122,11 @@ export class PwaWindowSupport {
       tab.setAttribute("floorpSSB", "true");
     });
 
-    const userContextId = this.getUserContextIdFromArgs();
-    if (userContextId > 0) {
-      this.applyUserContext(userContextId);
+    if (isContainerExperimentEnabled()) {
+      const userContextId = this.getUserContextIdFromArgs();
+      if (userContextId > 0) {
+        this.applyUserContext(userContextId);
+      }
     }
   }
 

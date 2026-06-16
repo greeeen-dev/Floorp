@@ -27,6 +27,10 @@ export function InstalledApps() {
   const [newName, setNewName] = useState("");
   const [selectedContainerId, setSelectedContainerId] = useState<number>(0);
   const [error, setError] = useState<string>("");
+  // Container features are gated behind the pwa_container_support experiment.
+  // When NRGetContainers is not exported, the experiment is disabled.
+  const containerExperimentEnabled =
+    typeof globalThis.NRGetContainers === "function";
   const renameDialogRef = useRef<HTMLDialogElement>(null) as React.RefObject<
     HTMLDialogElement
   >;
@@ -179,7 +183,9 @@ export function InstalledApps() {
             : (
               <div className="space-y-4">
                 {(Object.values(installedApps) as InstalledApp[]).map((app) => {
-                  const containerColor = getContainerColor(app.userContextId);
+                  const containerColor = containerExperimentEnabled
+                    ? getContainerColor(app.userContextId)
+                    : null;
                   return (
                     <div
                       key={app.id}
@@ -198,11 +204,11 @@ export function InstalledApps() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="font-medium truncate">{app.name}</p>
-                          {app.userContextId && app.userContextId > 0 && (
+                          {containerExperimentEnabled && app.userContextId && app.userContextId > 0 && (
                             <span
                               className={`text-xs px-1.5 py-0.5 rounded ${isContainerDeleted(app.userContextId)
-                                  ? "bg-warning/20 text-warning"
-                                  : "bg-base-200 text-base-content/70"
+                                ? "bg-warning/20 text-warning"
+                                : "bg-base-200 text-base-content/70"
                                 }`}
                             >
                               {getContainerName(app.userContextId)}
@@ -226,13 +232,15 @@ export function InstalledApps() {
                         </p>
                       </div>
                       <div className="flex gap-2 ml-4">
-                        <button
-                          type="button"
-                          className="btn btn-sm"
-                          onClick={() => handleContainer(app)}
-                        >
-                          {t("progressiveWebApp.container")}
-                        </button>
+                        {containerExperimentEnabled && (
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            onClick={() => handleContainer(app)}
+                          >
+                            {t("progressiveWebApp.container")}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="btn btn-sm"

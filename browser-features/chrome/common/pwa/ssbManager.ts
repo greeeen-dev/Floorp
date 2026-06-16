@@ -96,7 +96,11 @@ export class SiteSpecificBrowserManager {
     return currentTabSsb;
   }
 
-  public async installOrRunCurrentPageAsSsb(browser: Browser, asPwa = true) {
+  public async installOrRunCurrentPageAsSsb(
+    browser: Browser,
+    asPwa = true,
+    installUserContextId?: number,
+  ) {
     const isInstalled = await this.checkCurrentPageIsInstalled(browser);
 
     if (isInstalled) {
@@ -106,11 +110,15 @@ export class SiteSpecificBrowserManager {
         return;
       }
 
-      const ssbObj = await this.getIdByUrl(currentTabSsb.start_url);
+      const ssbObj = await this.getIdByUrl(
+        currentTabSsb.start_url,
+        installUserContextId ?? 0,
+      );
 
       if (ssbObj && globalThis.gBrowser.selectedBrowser.currentURI) {
         await this.runSsbByUrl(
           globalThis.gBrowser.selectedBrowser.currentURI.spec,
+          installUserContextId,
         );
       }
     } else {
@@ -122,11 +130,15 @@ export class SiteSpecificBrowserManager {
         return;
       }
 
+      if (installUserContextId && installUserContextId > 0) {
+        manifest.userContextId = installUserContextId;
+      }
+
       await this.install(manifest);
 
       // Installing needs some time to finish
       globalThis.setTimeout(() => {
-        this.runSsbByUrl(manifest.start_url);
+        this.runSsbByUrl(manifest.start_url, installUserContextId);
       }, 3000);
     }
   }
@@ -266,8 +278,8 @@ export class SiteSpecificBrowserManager {
     return null;
   }
 
-  public async runSsbByUrl(url: string) {
-    await this.ssbRunner.runSsbByUrl(url);
+  public async runSsbByUrl(url: string, userContextId?: number) {
+    await this.ssbRunner.runSsbByUrl(url, userContextId);
   }
 
   private async onCurrentTabChangedOrLoaded() {
@@ -343,14 +355,12 @@ export class SiteSpecificBrowserManager {
       ssbObj.start_url,
       ssbObj.userContextId ?? 0,
     );
-    await this.dataManager.removeSsbData(oldKey);
 
     const updatedManifest: Manifest = {
       ...ssbObj,
       userContextId: userContextId > 0 ? userContextId : undefined,
     };
-    await this.dataManager.saveSsbData(updatedManifest);
-    return true;
+    return await this.dataManager.moveSsbKey(oldKey, updatedManifest);
   }
 
   public useOSIntegration() {

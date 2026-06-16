@@ -8,7 +8,7 @@ import type { JSX } from "solid-js";
 import { render } from "@nora/solid-xul";
 import type { PwaService } from "./pwaService.ts";
 import type { Browser } from "./type.ts";
-import { getUserContextIdForBrowser } from "./containerUtils.ts";
+import { getUserContextIdForBrowser, isContainerExperimentEnabled } from "./containerUtils.ts";
 import { SsbContainerSelect } from "./SsbContainerSelect.tsx";
 import i18next from "i18next";
 import { addI18nObserver } from "#i18n/config-browser-chrome.ts";
@@ -231,7 +231,7 @@ export class SsbPageAction {
                     </xul:description>
                   </xul:vbox>
                 </xul:hbox>
-                {!isInstalling() && (
+                {!isInstalling() && isContainerExperimentEnabled() && (
                   <SsbContainerSelect
                     selectedId={selectedContainerId}
                     onSelect={this.onContainerSelect}

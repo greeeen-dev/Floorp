@@ -24,13 +24,27 @@ export class NRPwaManagerChild extends JSWindowActorChild {
         defineAs: "NRUninstallSsb",
         asAsync: true,
       });
-      Cu.exportFunction(this.NRGetContainers.bind(this), window, {
-        defineAs: "NRGetContainers",
-      });
-      Cu.exportFunction(this.NRSetSsbContainer.bind(this), window, {
-        defineAs: "NRSetSsbContainer",
-        asAsync: true,
-      });
+
+      // Only export container functions when the experiment is enabled
+      try {
+        const { PwaContainerExperiment } = ChromeUtils.importESModule(
+          "resource://noraneko/modules/pwa/PwaContainerExperiment.sys.mjs",
+        );
+        if (PwaContainerExperiment.isEnabled()) {
+          Cu.exportFunction(this.NRGetContainers.bind(this), window, {
+            defineAs: "NRGetContainers",
+          });
+          Cu.exportFunction(this.NRSetSsbContainer.bind(this), window, {
+            defineAs: "NRSetSsbContainer",
+            asAsync: true,
+          });
+        }
+      } catch (error) {
+        console.error(
+          "[NRPwaManagerChild] Failed to check container experiment:",
+          error,
+        );
+      }
     }
   }
   NRGetInstalledApps(

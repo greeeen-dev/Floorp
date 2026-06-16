@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { resolveContainerDisplayColorFromWindow } from "#libs/pwa/containerColorMap.ts";
+import { PwaContainerExperiment } from "./PwaContainerExperiment.sys.mts";
 
 const { FileUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/FileUtils.sys.mjs",
@@ -328,6 +329,9 @@ export const ImageTools = {
     userContextId: number,
     size = 128,
   ): Promise<imgIContainer> {
+    if (!PwaContainerExperiment.isEnabled()) {
+      return container;
+    }
     if (userContextId <= 0) {
       return container;
     }

@@ -26,6 +26,22 @@ type ExtendedGBrowser = typeof globalThis.gBrowser & {
 };
 
 /**
+ * Returns true when the PWA Container experiment is active.
+ * Uses ChromeUtils.importESModule to load the experiment guard from ESM.
+ * Returns false if the experiments system is unavailable (safe fallback).
+ */
+export function isContainerExperimentEnabled(): boolean {
+  try {
+    const { PwaContainerExperiment } = ChromeUtils.importESModule(
+      "resource://noraneko/modules/pwa/PwaContainerExperiment.sys.mjs",
+    );
+    return PwaContainerExperiment.isEnabled();
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Returns the Firefox Container userContextId for the tab hosting `browser`.
  * Returns 0 when no container is assigned or the tab cannot be resolved.
  */
@@ -51,6 +67,9 @@ export function getUserContextIdForBrowser(browser: Browser): number {
  * Returns a localized container label for display, or null when not in a container.
  */
 export function getContainerLabel(userContextId: number): string | null {
+  if (!isContainerExperimentEnabled()) {
+    return null;
+  }
   if (userContextId <= 0) {
     return null;
   }
@@ -70,6 +89,9 @@ export function getContainerLabel(userContextId: number): string | null {
  */
 export function getPublicContainerOptions(): ContainerOption[] {
   const noContainerLabel = i18next.t("ssb.page-action.no-container");
+  if (!isContainerExperimentEnabled()) {
+    return [{ userContextId: 0, label: noContainerLabel }];
+  }
   const options: ContainerOption[] = [
     { userContextId: 0, label: noContainerLabel },
   ];
@@ -78,8 +100,8 @@ export function getPublicContainerOptions(): ContainerOption[] {
     const { ContextualIdentityService } = ChromeUtils.importESModule(
       "resource://gre/modules/ContextualIdentityService.sys.mjs",
     );
-    const identities = ContextualIdentityService.getPublicIdentities() as
-      PublicIdentity[];
+    const identities =
+      ContextualIdentityService.getPublicIdentities() as PublicIdentity[];
 
     for (const identity of identities) {
       const label = identity.l10nId
